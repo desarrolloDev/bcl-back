@@ -1,0 +1,19 @@
+service: bcl-backend
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: 'us-east-1'
+
+functions:
+  obtenerPersonas:
+    handler: src/functions/obtenerPersonas.handler
+    events:
+      - httpApi:
+          path: /obtenerPersonas
+          method: get
+
+plugins:
+  - serverless-auto-swagger
+  - serverless-offline
