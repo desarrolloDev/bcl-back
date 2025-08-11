@@ -1,0 +1,27 @@
+{
+  "createItem": {
+    "type": "object",
+    "properties": {
+      "tipo": {
+        "type": "string",
+        "description": "Tipo de item (curso, horario, reserva)"
+      },
+      "data": {
+        "type": "object",
+        "description": "Datos específicos del item"
+      }
+    },
+    "required": ["tipo"],
+    "additionalProperties": true
+  },
+  "updateItem": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "description": "Datos a actualizar"
+      }
+    },
+    "additionalProperties": true
+  }
+}
