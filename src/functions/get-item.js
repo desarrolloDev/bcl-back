@@ -67,27 +67,17 @@ const dataGet = async (body) => {
         dataSemanal.push(data.Items.length ? data.Items[0] : {});
       }));
       return dataSemanal;
-    case 'reservas_fecha_tablas':
-      if (!body.desde && !body.hasta) {
-        return {
-          statusCode: 400,
-          body: JSON.stringify({ message: "Fecha de inicio y fin son requeridos" })
-        };
-      }
-
-      const obtItemReturn = {
-        tabla_alumno: 'fecha_reserva, tipoClase, paqueteClase, profesor, curso, tema, colegio, status, horarios'
-      }
-
+    case 'reservas_fecha':
+      const desde = new Date(body.desde || "2020-01-01T00:00:00").toISOString();
+      const hasta = new Date(body.hasta || "2025-07-15T23:59:59").toISOString();
       const objSearch = {
         TableName: process.env.TABLE_RESERVAS,
         KeyConditionExpression: "tipo = :tipo AND fecha_reserva BETWEEN :desde AND :hasta",
         ExpressionAttributeValues: {
           ":tipo": 'online',
-          ":desde": body.desde || "2020-01-01T00:00:00",
-          ":hasta": body.hasta || "2025-07-15T23:59:59"
-        },
-        ProjectionExpression: obtItemReturn[body.tabla]
+          ":desde": desde,
+          ":hasta": hasta
+        }
       };
       if (body.profesor) {
         objSearch.FilterExpression = (objSearch.FilterExpression ? objSearch.FilterExpression + " AND " : "") + "profesor = :profesor";
@@ -101,7 +91,8 @@ const dataGet = async (body) => {
         objSearch.FilterExpression = (objSearch.FilterExpression ? objSearch.FilterExpression + " AND " : "") + "status = :status";
         objSearch.ExpressionAttributeValues[":status"] = body.status;
       }
-      return objSearch;
+      const dataTabla = await dynamoDb.query(objSearch).promise();
+      return dataTabla.Items || [];
     default:
       return {
         statusCode: 405,
@@ -114,7 +105,7 @@ exports.handler = async (event) => {
   // console.log("event------>", event.query);
 
   const dataConsulta = await dataGet(event.query);
-  console.log("Data consulta:", dataConsulta);
+  // console.log("Data consulta:", dataConsulta);
 
   return {
     statusCode: 200,

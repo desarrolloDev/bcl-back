@@ -99,16 +99,24 @@ const guardarReservas = async (body) => {
 }
 
 const actualizarHorariosProf = async (body) => {
-  await Promise.all(body.horarios.map(async () => {
-    const horario = body.horarios.split('|');
-    await dynamoDb.update({
-      TableName: TABLE_HORARIOS,
-      Key: { tipo: 'online', semana_profesor: `${horario[0]}#${body.profesor}` },
-      UpdateExpression: `SET ${horario[1]}.${horario[2]}.alumnos = list_append(${horario[1]}.${horario[2]}.alumnos, :nuevoAlumno)`,
+  await Promise.all(body.horarios.map(async (hora) => {
+    const horario = hora.split('|');
+    const params = {
+      TableName: process.env.TABLE_HORARIOS,
+      Key: {
+        tipo: 'online',
+        semana_profesor: `${horario[0]}#${body.profesor}`
+      },
+      UpdateExpression: 'SET #horarios.#slot.alumnos = list_append(#horarios.#slot.alumnos, :nuevoAlumno)',
+      ExpressionAttributeNames: {
+        '#horarios': 'horarios',
+        '#slot': `${horario[1]}|${horario[2]}`
+      },
       ExpressionAttributeValues: {
         ':nuevoAlumno': [`${body.alumno_nombre}|${body.curso}|${body.profesor}`]
       }
-    }).promise();
+    };
+    await dynamoDb.update(params).promise();
   }));
 }
 
@@ -117,9 +125,9 @@ const dataCreate = async (body) => {
     case 'guardarCursos':
       return await guardarCursos(body);
     case 'guardarHorarios':
-      await actualizarHorariosProf(body);
       return await guardarHorarios(body);
     case 'guardarReservas':
+      await actualizarHorariosProf(body);
       return await guardarReservas(body);
     default:
       return {
