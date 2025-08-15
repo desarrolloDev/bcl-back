@@ -67,15 +67,27 @@ const dataGet = async (body) => {
         dataSemanal.push(data.Items.length ? data.Items[0] : {});
       }));
       return dataSemanal;
-    case 'reservas_fecha':
+    case 'reservas_fecha_tablas':
+      if (!body.desde && !body.hasta) {
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ message: "Fecha de inicio y fin son requeridos" })
+        };
+      }
+
+      const obtItemReturn = {
+        tabla_alumno: 'fecha_reserva, tipoClase, paqueteClase, profesor, curso, tema, colegio, status, horarios'
+      }
+
       const objSearch = {
         TableName: process.env.TABLE_RESERVAS,
         KeyConditionExpression: "tipo = :tipo AND fecha_reserva BETWEEN :desde AND :hasta",
         ExpressionAttributeValues: {
           ":tipo": 'online',
-          ":desde": body.desde || "2020-01-01T00:00:0m0",
+          ":desde": body.desde || "2020-01-01T00:00:00",
           ":hasta": body.hasta || "2025-07-15T23:59:59"
-        }
+        },
+        ProjectionExpression: obtItemReturn[body.tabla]
       };
       if (body.profesor) {
         objSearch.FilterExpression = (objSearch.FilterExpression ? objSearch.FilterExpression + " AND " : "") + "profesor = :profesor";

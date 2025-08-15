@@ -71,36 +71,56 @@ const guardarHorarios = async (body) => {
   }));
 }
 
+const guardarReservas = async (body) => {
+  const paramsPutItem = {
+    TableName: process.env.TABLE_RESERVAS, 
+    Item: {
+      tipo: 'online',
+      fecha_reserva: body.fecha_reserva,
+      status: 'Pendiente',
+      colegio: body.colegio,
+      tema: body.tema,
+      curso: body.curso,
+      gradoCiclo: body.gradoCiclo,
+      tipoClase: body.tipoClase,
+      recompensa: body.recompensa,
+      paqueteClase: body.paqueteClase,
+      clasesReservadas: body.clasesReservadas,
+      clasesTotal: body.clasesTotal,
+      precio: body.precio,
+      profesor: body.profesor,
+      profesor_nombre: body.profesor_nombre,
+      alumno: body.alumno,
+      alumno_nombre: body.alumno_nombre,
+      horarios: body.horarios
+    }
+  }
+  await dynamoDb.put(paramsPutItem).promise();
+}
+
+const actualizarHorariosProf = async (body) => {
+  await Promise.all(body.horarios.map(async () => {
+    const horario = body.horarios.split('|');
+    await dynamoDb.update({
+      TableName: TABLE_HORARIOS,
+      Key: { tipo: 'online', semana_profesor: `${horario[0]}#${body.profesor}` },
+      UpdateExpression: `SET ${horario[1]}.${horario[2]}.alumnos = list_append(${horario[1]}.${horario[2]}.alumnos, :nuevoAlumno)`,
+      ExpressionAttributeValues: {
+        ':nuevoAlumno': [`${body.alumno_nombre}|${body.curso}|${body.profesor}`]
+      }
+    }).promise();
+  }));
+}
+
 const dataCreate = async (body) => {
   switch (body.tipo) {
     case 'guardarCursos':
       return await guardarCursos(body);
     case 'guardarHorarios':
+      await actualizarHorariosProf(body);
       return await guardarHorarios(body);
     case 'guardarReservas':
-      return {
-        TableName: process.env.TABLE_RESERVAS,
-        Item: {
-          tipo: 'online',
-          alumno_profesor: `${body.alumno}#${body.profesor}`,
-          fecha_reserva: new Date().toISOString(),
-          status: body.status,
-          status_clase: body.status_clase,
-          alumno: body.alumno,
-          profesor: body.profesor,
-          curso: body.curso,
-          colegio: body.colegio,
-          gradoCiclo: body.gradoCiclo,
-          tema: body.tema,
-          tipoClase: body.tipoClase,
-          paqueteClase: body.paqueteClase,
-          precio: body.precio,
-          clases: body.clases,
-          primera_clase: body.primer_clase,
-          recompensa: body.recompensa,
-          horarios: body.horarios
-        }
-      };
+      return await guardarReservas(body);
     default:
       return {
         statusCode: 405,
@@ -110,7 +130,7 @@ const dataCreate = async (body) => {
 }
 
 exports.handler = async (event) => {
-  console.log('Creating data...', event);
+  // console.log('Creating data...', event);
   const body = event.body;
 
   await dataCreate(body);

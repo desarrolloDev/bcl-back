@@ -9,7 +9,7 @@ provider:
   environment:
     TABLE_CURSOS: CursosProf
     TABLE_HORARIOS: HorariosProfesor
-    TABLE_RESERVAS: ReservasClaseTable
+    TABLE_RESERVAS: ReservasClase
   apiGateway:
     description: "BCL Backend API Gateway"
     binaryMediaTypes:
@@ -31,7 +31,7 @@ provider:
           Resource:
             - !GetAtt CursosProf.Arn
             - !GetAtt HorariosProfesor.Arn
-            - !GetAtt ReservasClaseTable.Arn
+            - !GetAtt ReservasClase.Arn
             - !Sub "${CursosProf.Arn}/index/*"
 
 plugins:
@@ -147,7 +147,7 @@ resources:
             KeyType: RANGE
         BillingMode: PAY_PER_REQUEST
   
-    ReservasClaseTable:
+    ReservasClase:
       Type: AWS::DynamoDB::Table
       Properties:
         TableName: ReservasClase
