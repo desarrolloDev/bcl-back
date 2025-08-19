@@ -120,6 +120,68 @@ const actualizarHorariosProf = async (body) => {
   }));
 }
 
+const cancelarReserva = async (body) => {
+  await Promise.all(body.reservasPendientes.map(async (hora) => {
+
+    const horario = hora.split('|');
+
+    const result = await dynamoDb.get({
+      TableName:  process.env.TABLE_HORARIOS,
+      Key: {
+        tipo: 'online',
+        semana_profesor: `${horario[0]}#${body.profesor}`
+      },
+      ProjectionExpression: '#horarios.#slot.alumnos',
+      ExpressionAttributeNames: {
+        '#horarios': 'horarios',
+        '#slot': `${horario[1]}|${horario[2]}`
+      }
+    }).promise();
+
+    let alumnos = result.Item.horarios[`${horario[1]}|${horario[2]}`].alumnos;
+
+    alumnos = alumnos.filter(a => a !== body.id_alumno);
+
+    await dynamoDb.update({
+      TableName: process.env.TABLE_HORARIOS,
+      Key: {
+        tipo: 'online',
+        semana_profesor: `${horario[0]}#${body.profesor}`
+      },
+      UpdateExpression: 'SET #horarios.#slot.alumnos = :nuevoArray',
+      ExpressionAttributeNames: {
+        '#horarios': 'horarios',
+        '#slot': `${horario[1]}|${horario[2]}`
+      },
+      ExpressionAttributeValues: {
+        ':nuevoArray': alumnos
+      }
+    }).promise();
+  }));
+}
+
+const actualizarParamReserva = async (body) => {
+  const params = {
+    TableName: process.env.TABLE_RESERVAS,
+    Key: {
+      tipo: 'online',
+      fecha_reserva: body.fecha_reserva
+    },
+    UpdateExpression: `SET #params = :${body.params}`,
+    ExpressionAttributeNames: {
+      "#params": body.params
+    },
+    ExpressionAttributeValues: {
+      [`:${body.params}`]: body.value
+    }
+  };
+  await dynamoDb.update(params).promise();
+
+  if (body.params === 'status' && body.value === 'Cancelado') {
+    await cancelarReserva(body);
+  }
+}
+
 const dataCreate = async (body) => {
   switch (body.tipo) {
     case 'guardarCursos':
@@ -129,6 +191,8 @@ const dataCreate = async (body) => {
     case 'guardarReservas':
       await actualizarHorariosProf(body);
       return await guardarReservas(body);
+    case 'actualizarReserva':
+      await actualizarParamReserva(body);
     default:
       return {
         statusCode: 405,
