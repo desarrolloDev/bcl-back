@@ -32,43 +32,106 @@ const guardarCursos = async (body) => {
 
 const guardarHorarios = async (body) => {
   // console.log('guardarHorarios....');
-  if (!body.profesor && !body.horarios) {
+  if (!body.profesor && (!body.agregados || !body.eliminados)) {
     return {
       statusCode: 400,
       body: JSON.stringify({ message: "Profesor y horarios son requeridos" })
     };
   }
 
-  const horarios = body.horarios;
-  const objPutItem = [];
-  for (const clave of Object.keys(horarios)) {
+  // AGREGAR NUEVOS HORARIOS EN EL REGISTRO DEL PROFESOR
+  const horariosAgregados = body.agregados;
 
-    const listahorarios = {};
+  for (const clave of Object.keys(horariosAgregados)) {
+    if (horariosAgregados[clave].length !== 0) {
 
-    for (const hora of horarios[clave]) {
-      const item = hora.split('|');
-      listahorarios[`${item[0]}|${item[1]}`] = {
-        tipo: item[2],
-        alumno: ''
-      };
-    }
+      const dataSemana = horariosAgregados[clave];
 
-    if (horarios[clave].length !== 0) {
-      objPutItem.push({ 
-        TableName: process.env.TABLE_HORARIOS, 
-        Item: {
-          tipo: 'online',
-          semana_profesor: `${clave}#${body.profesor}`,
-          horarios: listahorarios
+      // Validar si existe o no el item en la bd
+      const result = await dynamoDb.get({
+        TableName: process.env.TABLE_HORARIOS,
+        Key: { tipo: 'online', semana_profesor: `${clave}#${body.profesor}` }
+      }).promise();
+
+      if (result.Item) {
+        
+        // Actualizar el horario en la semana
+        for (const hora of dataSemana) {
+
+          const item = hora.split('|');
+
+          const params = {
+            TableName: process.env.TABLE_HORARIOS,
+            Key: {
+              tipo: 'online',
+              semana_profesor: `${clave}#${body.profesor}`
+            },
+            UpdateExpression: 'SET #horarios.#slot = :nuevoHorario',
+            ExpressionAttributeNames: {
+              '#horarios': 'horarios',
+              '#slot': `${item[0]}|${item[1]}`
+            },
+            ExpressionAttributeValues: {
+              ':nuevoHorario': {
+                tipo: item[2],
+                alumnos: []
+              }
+            }
+          };
+          await dynamoDb.update(params).promise();
         }
-      });
+
+      } else {
+
+        const listahorarios = {};
+
+        for (const hora of dataSemana) {
+          const item = hora.split('|');
+          listahorarios[`${item[0]}|${item[1]}`] = {
+            tipo: item[2],
+            alumnos: []
+          };
+        }
+
+        const objPutItem = { 
+          TableName: process.env.TABLE_HORARIOS, 
+          Item: {
+            tipo: 'online',
+            semana_profesor: `${clave}#${body.profesor}`,
+            horarios: listahorarios
+          }
+        };
+        await dynamoDb.put(objPutItem).promise();
+      }
     }
   }
 
-  await Promise.all(objPutItem.map(async (params) => {
-    // console.log('params: ', params);
-    await dynamoDb.put(params).promise();
-  }));
+  // ELIMINAR HORARIOS EN EL REGISTRO DEL PROFESOR
+  const horariosEliminados = body.eliminados;
+
+  for (const clave of Object.keys(horariosEliminados)) {
+    const dataSemana = horariosEliminados[clave];
+
+    for (const hora of dataSemana) {
+
+      const item = hora.split('|');
+
+      const params = {
+        TableName: process.env.TABLE_HORARIOS,
+        Key: {
+          tipo: 'online',
+          semana_profesor: `${clave}#${body.profesor}`
+        },
+        UpdateExpression: 'REMOVE #horarios.#slot',
+        ConditionExpression: 'attribute_exists(#horarios.#slot)',
+        ExpressionAttributeNames: {
+          '#horarios': 'horarios',
+          '#slot': `${item[0]}|${item[1]}`
+        }
+      };
+      await dynamoDb.update(params).promise();
+    }
+  }
 }
 
 const guardarReservas = async (body) => {
