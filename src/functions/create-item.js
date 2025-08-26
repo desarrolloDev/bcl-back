@@ -182,6 +182,55 @@ const actualizarParamReserva = async (body) => {
   }
 }
 
+const actualizarHorariosAlumno = async (body) => {
+  // Actualizamos los nuevos horarios del alumno
+  const params = {
+    TableName: process.env.TABLE_RESERVAS,
+    Key: {
+      tipo: 'online',
+      fecha_reserva: body.fecha_reserva
+    },
+    UpdateExpression: `SET #clasesReservadas = :clasesReservadas, #horarios = :horarios`,
+    ExpressionAttributeNames: {
+      "#clasesReservadas": "clasesReservadas",
+      "#horarios": "horarios"
+    },
+    ExpressionAttributeValues: {
+      ":clasesReservadas": body.fechasTotal.length,
+      ":horarios": body.fechasTotal
+    }
+  };
+  if (body.tema) {
+    params.UpdateExpression += ', #tema = :tema';
+    params.ExpressionAttributeNames['#tema'] = 'tema';
+    params.ExpressionAttributeValues[':tema'] = body.tema;
+  }
+  await dynamoDb.update(params).promise();
+
+  // Eliminamos los horarios antiguos del profesor
+  if (body.fechasEliminadas.length !== 0) {
+    await cancelarReserva({
+      reservasPendientes: body.fechasEliminadas,
+      profesor: body.profesor,
+      id_alumno: body.alumno
+    });
+  }
+
+  await cancelarReserva({
+    reservasPendientes: body.fechasEliminadas,
+    profesor: body.profesor,
+    id_alumno: body.alumno
+  });
+
+  // Agregamos los nuevos horarios del profesor
+  await actualizarHorariosProf({
+    horarios: body.fechasNuevas,
+    profesor: body.profesor,
+    alumno_nombre: body.alumno_nombre,
+    curso: body.curso
+  });
+}
+
 const dataCreate = async (body) => {
   switch (body.tipo) {
     case 'guardarCursos':
@@ -193,6 +242,8 @@ const dataCreate = async (body) => {
       return await guardarReservas(body);
     case 'actualizarReserva':
       await actualizarParamReserva(body);
+    case 'actualizarHorariosAlumno':
+      await actualizarHorariosAlumno(body);
     default:
       return {
         statusCode: 405,
