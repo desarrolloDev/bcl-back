@@ -203,7 +203,7 @@ const cancelarReserva = async (body) => {
 
     let alumnos = result.Item.horarios[`${horario[1]}|${horario[2]}`].alumnos;
 
-    alumnos = alumnos.filter(a => a !== body.id_alumno);
+    alumnos = alumnos.filter(a => !a.includes(body.id_alumno));
 
     await dynamoDb.update({
       TableName: process.env.TABLE_HORARIOS,
@@ -279,19 +279,15 @@ const actualizarHorariosAlumno = async (body) => {
     });
   }
 
-  await cancelarReserva({
-    reservasPendientes: body.fechasEliminadas,
-    profesor: body.profesor,
-    id_alumno: body.alumno
-  });
-
   // Agregamos los nuevos horarios del profesor
-  await actualizarHorariosProf({
-    horarios: body.fechasNuevas,
-    profesor: body.profesor,
-    alumno_nombre: body.alumno_nombre,
-    curso: body.curso
-  });
+  if (body.fechasNuevas.length !== 0) {
+    await actualizarHorariosProf({
+      horarios: body.fechasNuevas,
+      profesor: body.profesor,
+      alumno_nombre: body.alumno_nombre,
+      curso: body.curso
+    });
+  }
 }
 
 const dataCreate = async (body) => {
