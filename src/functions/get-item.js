@@ -16,7 +16,8 @@ const dataGet = async (body) => {
         ExpressionAttributeValues: {
           ':tipo': 'online',
           ':profesor': `${body.profesor}#`
-        }
+        },
+        ScanIndexForward: false
       };
       const data = await dynamoDb.query(params).promise();
       return data.Items || [];
@@ -34,7 +35,8 @@ const dataGet = async (body) => {
         ExpressionAttributeValues: {
           ':tipo': 'online',
           ':curso': body.curso
-        }
+        },
+        ScanIndexForward: false
       };
       const dataProfesores = await dynamoDb.query(paramsCurso).promise();
       return dataProfesores.Items || [];
@@ -56,7 +58,8 @@ const dataGet = async (body) => {
           ExpressionAttributeValues: {
             ':tipo': 'online',
             ':semana_profesor': `${semana}#${body.profesor}`
-          }
+          },
+          ScanIndexForward: false
         });
       }
 
@@ -77,7 +80,8 @@ const dataGet = async (body) => {
           ":tipo": 'online',
           ":desde": desde,
           ":hasta": hasta
-        }
+        },
+        ScanIndexForward: false
       };
       if (body.profesor) {
         objSearch.FilterExpression = (objSearch.FilterExpression ? objSearch.FilterExpression + " AND " : "") + "profesor = :profesor";

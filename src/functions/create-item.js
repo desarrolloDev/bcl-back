@@ -155,7 +155,8 @@ const guardarReservas = async (body) => {
       profesor_nombre: body.profesor_nombre,
       alumno: body.alumno,
       alumno_nombre: body.alumno_nombre,
-      horarios: body.horarios
+      horarios: body.horarios,
+      stringClasesReservadas: body.stringClasesReservadas ? body.stringClasesReservadas : ''
     }
   }
   await dynamoDb.put(paramsPutItem).promise();
@@ -176,7 +177,7 @@ const actualizarHorariosProf = async (body) => {
         '#slot': `${horario[1]}|${horario[2]}`
       },
       ExpressionAttributeValues: {
-        ':nuevoAlumno': [`${body.alumno_nombre}|${body.curso}|${body.profesor}`]
+        ':nuevoAlumno': [`${body.alumno_nombre}|${body.curso}|${body.alumno}`]
       }
     };
     await dynamoDb.update(params).promise();
@@ -271,7 +272,7 @@ const actualizarHorariosAlumno = async (body) => {
   await dynamoDb.update(params).promise();
 
   // Eliminamos los horarios antiguos del profesor
-  if (body.fechasEliminadas.length !== 0) {
+  if (body.fechasEliminadas.length > 0) {
     await cancelarReserva({
       reservasPendientes: body.fechasEliminadas,
       profesor: body.profesor,
@@ -280,12 +281,13 @@ const actualizarHorariosAlumno = async (body) => {
   }
 
   // Agregamos los nuevos horarios del profesor
-  if (body.fechasNuevas.length !== 0) {
+  if (body.fechasNuevas.length > 0) {
     await actualizarHorariosProf({
       horarios: body.fechasNuevas,
       profesor: body.profesor,
       alumno_nombre: body.alumno_nombre,
-      curso: body.curso
+      curso: body.curso,
+      alumno: body.alumno
     });
   }
 }
