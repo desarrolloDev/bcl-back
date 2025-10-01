@@ -23,5 +23,20 @@
       }
     },
     "additionalProperties": true
+  },
+  "downloadItem": {
+    "type": "object",
+    "properties": {
+      "desde": {
+        "type": "string",
+        "description": "Fecha de inicio del rango"
+      },
+      "hasta": {
+        "type": "string",
+        "description": "Fecha de fin del rango"
+      }
+    },
+    "required": ["desde", "hasta"],
+    "additionalProperties": true
   }
 }

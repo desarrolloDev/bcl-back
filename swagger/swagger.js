@@ -42,49 +42,18 @@
         }
       }
     },
-    "/items/{id}": {
-      "put": {
-        "summary": "actualizarItem",
+    "/download": {
+      "get": {
+        "summary": "downloadItem",
         "description": "",
-        "operationId": "actualizarItem.put.items/{id}",
+        "operationId": "downloadItem.get.download",
         "consumes": [
           "application/json"
         ],
         "produces": [
           "application/json"
         ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "200 response"
-          }
-        }
-      },
-      "delete": {
-        "summary": "eliminarItem",
-        "description": "",
-        "operationId": "eliminarItem.delete.items/{id}",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "type": "string"
-          }
-        ],
+        "parameters": [],
         "responses": {
           "200": {
             "description": "200 response"
