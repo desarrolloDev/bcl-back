@@ -162,7 +162,7 @@ const guardarReservas = async (body) => {
   await dynamoDb.put(paramsPutItem).promise();
 }
 
-const actualizarHorariosProf = async (body) => {
+const actualizarHorariosProf = async (body, tipo) => {
   await Promise.all(body.horarios.map(async (hora) => {
     const horario = hora.split('|');
     const params = {
@@ -177,7 +177,7 @@ const actualizarHorariosProf = async (body) => {
         '#slot': `${horario[1]}|${horario[2]}`
       },
       ExpressionAttributeValues: {
-        ':nuevoAlumno': [`${body.alumno_nombre}|${body.curso}|${body.alumno}`]
+        ':nuevoAlumno': [`${body.alumno_nombre}|${body.curso}|${body.alumno}|${tipo}`]
       }
     };
     await dynamoDb.update(params).promise();
@@ -224,6 +224,55 @@ const cancelarReserva = async (body) => {
   }));
 }
 
+const confirmarReserva = async (body) => {
+  await Promise.all(body.reservasPendientes.map(async (hora) => {
+
+    const horario = hora.split('|');
+
+    const result = await dynamoDb.get({
+      TableName:  process.env.TABLE_HORARIOS,
+      Key: {
+        tipo: 'online',
+        semana_profesor: `${horario[0]}#${body.profesor}`
+      },
+      ProjectionExpression: '#horarios.#slot.alumnos',
+      ExpressionAttributeNames: {
+        '#horarios': 'horarios',
+        '#slot': `${horario[1]}|${horario[2]}`
+      }
+    }).promise();
+
+    let alumnos = result.Item.horarios[`${horario[1]}|${horario[2]}`].alumnos;
+
+    // Buscar el registro del alumno y cambiar PENDIENTE a CONFIRMADO
+    alumnos = alumnos.map(a => {
+      if (a.includes(body.id_alumno)) {
+        const partes = a.split('|');
+        // partes[3] es el estado (PENDIENTE o CONFIRMADO)
+        partes[3] = 'CONFIRMADO';
+        return partes.join('|');
+      }
+      return a;
+    });
+
+    await dynamoDb.update({
+      TableName: process.env.TABLE_HORARIOS,
+      Key: {
+        tipo: 'online',
+        semana_profesor: `${horario[0]}#${body.profesor}`
+      },
+      UpdateExpression: 'SET #horarios.#slot.alumnos = :nuevoArray',
+      ExpressionAttributeNames: {
+        '#horarios': 'horarios',
+        '#slot': `${horario[1]}|${horario[2]}`
+      },
+      ExpressionAttributeValues: {
+        ':nuevoArray': alumnos
+      }
+    }).promise();
+  }));
+}
+
 const actualizarParamReserva = async (body) => {
   const params = {
     TableName: process.env.TABLE_RESERVAS,
@@ -243,6 +292,9 @@ const actualizarParamReserva = async (body) => {
 
   if (body.params === 'status' && body.value === 'Cancelado') {
     await cancelarReserva(body);
+  }
+  if (body.value === 'Confirmado') {
+    await confirmarReserva(body);
   }
 }
 
@@ -288,7 +340,7 @@ const actualizarHorariosAlumno = async (body) => {
       alumno_nombre: body.alumno_nombre,
       curso: body.curso,
       alumno: body.alumno
-    });
+    }, 'CONFIRMADO');
   }
 }
 
@@ -299,7 +351,7 @@ const dataCreate = async (body) => {
     case 'guardarHorarios':
       return await guardarHorarios(body);
     case 'guardarReservas':
-      await actualizarHorariosProf(body);
+      await actualizarHorariosProf(body, 'PENDIENTE');
       return await guardarReservas(body);
     case 'actualizarReserva':
       await actualizarParamReserva(body);
